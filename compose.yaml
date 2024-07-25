@@ -26,6 +26,7 @@ services:
       - "19092:19092"
     volumes:
       - data-broker:/var/lib/kafka/data
+      - ./examples:/examples
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'

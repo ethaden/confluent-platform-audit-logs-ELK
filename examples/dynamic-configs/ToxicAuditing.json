@@ -1,0 +1,34 @@
+{
+    "destinations": {
+        "bootstrap_servers": [
+            "broker-auditlog:9092"
+        ],
+        "topics": {
+            "confluent-audit-log-events_ABCDE": {
+                "retention_ms": 31536000000
+            },
+            "confluent-audit-log-events_ABCDE_produce": {
+                "retention_ms": 31536000000
+            },
+            "confluent-audit-log-events_ABCDE_consume": {
+                "retention_ms": 31536000000
+            }
+        }
+    },
+    "default_topics": {
+        "allowed": "confluent-audit-log-events_ABCDE",
+        "denied": "confluent-audit-log-events_ABCDE"
+    },
+    "routes": {
+        "crn:///kafka=*/group=*": {
+            "produce": {
+                "allowed": "",
+                "denied": "confluent-audit-log-events_ABCDE_produce"
+            },
+            "consume": {
+                "allowed": "confluent-audit-log-events_ABCDE_consume",
+                "denied": "confluent-audit-log-events_ABCDE_consume"
+            }
+        }
+    }
+}

@@ -11,6 +11,27 @@ Start the docker containers
 docker compose up -d
 ```
 
+This will set up two clusters, each with one Zookeeper node and one Kafka broker. The main instance is used for regular data. The second instance is used to route audit log data from the first instance too.
+
+The content of the folder `examples` is visible in the `broker` container under `/examples`:
+
+```shell
+docker compose exec broker ls -l /examples
+```
+
+Show the dynamic configuration of the main cluster:
+
+```shell
+docker compose exec broker kafka-configs --bootstrap-server localhost:9092 --describe --entity-type brokers
+```
+
+Apply the dynamic configuration found in file `/examples/dynamic-configs/GoodAuditing.json`:
+
+```shell
+docker compose exec broker kafka-configs --bootstrap-server localhost:9092 --alter --broker-defaults --add-config-file /examples/dynamic-configs/GoodAuditing.json
+```
+
+
 ## Clean-up
 
 Shut down all containers and remove all persistant data:
