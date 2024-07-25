@@ -1,0 +1,120 @@
+---
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:${CP_VERSION}
+    hostname: zookeeper
+    restart: always
+    #ports:
+    #  - "2181:2181"
+    volumes:
+      - data-zookeeper-log:/var/lib/zookeeper/log
+      - data-zookeeper-data:/var/lib/zookeeper/data
+    environment:
+      ZOOKEEPER_TICK_TIME: 2000
+      KAFKA_OPTS: "-Dzookeeper.4lw.commands.whitelist=*"
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_JMX_HOSTNAME: zookeeper
+      ZOOKEEPER_CLIENT_PORT: 2181
+ 
+  broker:
+    image: confluentinc/cp-server:${CP_VERSION}
+    hostname: broker
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "19092:19092"
+    volumes:
+      - data-broker:/var/lib/kafka/data
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:9092,PLAINTEXT_HOST://localhost:19092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1
+      #CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
+      KAFKA_CONFLUENT_SUPPORT_METRICS_ENABLE: 'false'
+      KAFKA_CONFLUENT_REPORTERS_TELEMETRY_AUTO_ENABLE: 'false'
+      KAFKA_CONFLUENT_TELEMETRY_ENABLED: 'false'
+      # metrics
+      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+      CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: "broker:9092"
+      CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
+      CONFLUENT_METRICS_ENABLE: 'true'
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:${CP_VERSION}
+    hostname: schema-registry
+    #container_name: schema-registry
+    depends_on:
+      - zookeeper
+      - broker
+    ports:
+      - '8081:8081'
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'broker:9092'
+      SCHEMA_REGISTRY_LISTENERS: "http://0.0.0.0:8081"
+      SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: 'zookeeper:2181'
+
+  zookeeper-auditlog:
+    image: confluentinc/cp-zookeeper:${CP_VERSION}
+    hostname: zookeeper-auditlog
+    restart: always
+    #ports:
+    #  - "12181:2181"
+    volumes:
+      - data-zookeeper-auditlog-log:/var/lib/zookeeper/log
+      - data-zookeeper-auditlog-data:/var/lib/zookeeper/data
+    environment:
+      ZOOKEEPER_TICK_TIME: 2000
+      KAFKA_OPTS: "-Dzookeeper.4lw.commands.whitelist=*"
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_JMX_HOSTNAME: zookeeper
+      ZOOKEEPER_CLIENT_PORT: 2181
+ 
+  broker-auditlog:
+    image: confluentinc/cp-server:${CP_VERSION}
+    hostname: broker-auditlog
+    depends_on:
+      - zookeeper
+    ports:
+      - "29092:29092"
+    volumes:
+      - data-broker-auditlog:/var/lib/kafka/data
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper-auditlog:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker-auditlog:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1
+      #CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
+      KAFKA_CONFLUENT_REPORTERS_TELEMETRY_AUTO_ENABLE: 'false'
+      KAFKA_CONFLUENT_TELEMETRY_ENABLED: 'false'
+      # metrics
+      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+      CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: "broker-auditlog:9092"
+      CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
+      CONFLUENT_METRICS_ENABLE: 'true'
+
+volumes:
+  data-zookeeper-log:
+    driver: local
+  data-zookeeper-data:
+    driver: local
+  data-broker:
+    driver: local
+  data-zookeeper-auditlog-log:
+    driver: local
+  data-zookeeper-auditlog-data:
+    driver: local
+  data-broker-auditlog:
+    driver: local

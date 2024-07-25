@@ -1,0 +1,21 @@
+= Demo for configuring audit logging
+
+This playground for experimenting with audit logging with a dedicated audit log cluster
+
+DISCLAIMER: This project is for demonstration purposes only. Using the demo unmodified in production is highly discouraged. Use at your own risk.
+
+## How to use
+Start the docker containers
+
+```shell
+docker compose up -d
+```
+
+## Clean-up
+
+Shut down all containers and remove all persistant data:
+
+```shell
+docker compose down -v
+```
+
