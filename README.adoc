@@ -31,6 +31,16 @@ Apply the dynamic configuration found in file `/examples/dynamic-configs/GoodAud
 docker compose exec broker kafka-configs --bootstrap-server localhost:9092 --alter --broker-defaults --add-config-file /examples/dynamic-configs/GoodAuditing.json
 ```
 
+Produce to the cluster in order to create some audit log events:
+
+```shell
+docker compose exec broker kafka-console-producer --producer.config /clients/producer.conf --bootstrap-server broker:9092 --topic test
+```
+
+Consume from the cluster:
+
+```shell
+docker compose exec broker kafka-console-consumer --consumer.config /clients/consumer.conf --bootstrap-server broker:9092 --topic test --from-beginning
 
 ## Clean-up
 
