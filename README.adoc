@@ -19,6 +19,14 @@ The content of the folder `examples` is visible in the `broker` container under 
 docker compose exec broker ls -l /examples
 ```
 
+A few ACLs should have been set up. You can list them like this::
+
+```shell
+docker compose exec broker kafka-acls --command-config /clients/admin.conf --bootstrap-server broker:9092 --list
+```
+
+## Dynamic configuration
+
 Show the dynamic configuration of the main cluster:
 
 ```shell
@@ -41,6 +49,8 @@ Consume from the cluster:
 
 ```shell
 docker compose exec broker kafka-console-consumer --consumer.config /clients/consumer.conf --bootstrap-server broker:9092 --topic test --from-beginning
+```
+
 
 ## Clean-up
 
