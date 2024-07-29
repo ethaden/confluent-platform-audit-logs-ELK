@@ -19,25 +19,72 @@ The content of the folder `examples` is visible in the `broker` container under 
 docker compose exec broker ls -l /examples
 ```
 
+List the topics in the cluster by running:
+
+```shell
+docker compose exec broker kafka-topics --command-config /clients/admin.conf --bootstrap-server broker:9092 --list
+```
+
+
 A few ACLs should have been set up. You can list them like this::
 
 ```shell
 docker compose exec broker kafka-acls --command-config /clients/admin.conf --bootstrap-server broker:9092 --list
 ```
 
+## Audit log
+
+The setup has created a separate audit log "cluster" and prepared three topics in it.
+
+You can list the topics of the audit log cluster like this:
+
+```shell
+docker compose exec broker kafka-topics --command-config /clients/admin-auditlog.conf --bootstrap-server broker-auditlog:9092 --list
+```
+
+
+In a separate shell, start consuming from the default one:
+
+```shell
+docker compose exec broker-auditlog kafka-console-consumer --consumer.config /clients/admin-auditlog.conf --bootstrap-server broker-auditlog:9092 --topic confluent-audit-log-events
+```
+
+Produce something to the `test` topic and the main cluster, but use the wrong credentials. Authorization will be denied:
+
+```shell
+docker compose exec broker kafka-console-producer --producer.config /clients/consumer.conf --bootstrap-server broker:9092 --topic test
+```
+
+However, you won't see anything in the topic in our audit log cluster yet, as the configuration to forward audit log events will be dynamically added in the next step.
+
 ## Dynamic configuration
 
 Show the dynamic configuration of the main cluster:
 
 ```shell
-docker compose exec broker kafka-configs --bootstrap-server localhost:9092 --describe --entity-type brokers
+docker compose exec broker kafka-configs --command-config /clients/admin.conf --bootstrap-server broker:9092 --describe --entity-type brokers
 ```
+
+We have provided authentication information required for the main cluster to forward events to the audit log cluster in the broker configuration. But we have not configured the actual forwarding of events yet. This is done in the following.
 
 Apply the dynamic configuration found in file `/examples/dynamic-configs/GoodAuditing.json`:
 
 ```shell
-docker compose exec broker kafka-configs --bootstrap-server localhost:9092 --alter --broker-defaults --add-config-file /examples/dynamic-configs/GoodAuditing.json
+docker compose exec broker kafka-configs --command-config /clients/admin.conf --bootstrap-server broker:9092 --alter --broker-defaults --add-config-file /examples/dynamic-configs/GoodAuditing.json
 ```
+
+Optionally, show the applied dynamic broker configuration:
+
+```shell
+docker compose exec broker kafka-configs --command-config /clients/admin.conf --bootstrap-server broker:9092 --broker-defaults --describe
+```
+
+Optionally, show all configurations for brokers (including the static configuration):
+
+```shell
+docker compose exec broker kafka-configs --command-config /clients/admin.conf --bootstrap-server broker:9092 --entity-type brokers --describe --all
+```
+
 
 Produce to the cluster in order to create some audit log events:
 
@@ -45,12 +92,24 @@ Produce to the cluster in order to create some audit log events:
 docker compose exec broker kafka-console-producer --producer.config /clients/producer.conf --bootstrap-server broker:9092 --topic test
 ```
 
+Try producing with wrong credentials:
+
+```shell
+docker compose exec broker kafka-console-producer --producer.config /clients/consumer.conf --bootstrap-server broker:9092 --topic test
+```
+
+
 Consume from the cluster:
 
 ```shell
 docker compose exec broker kafka-console-consumer --consumer.config /clients/consumer.conf --bootstrap-server broker:9092 --topic test --from-beginning
 ```
 
+Remove the dynamic configuration again:
+
+```shell
+docker compose exec broker kafka-configs --command-config /clients/admin.conf --bootstrap-server broker:9092 --alter --broker-defaults --delete-config confluent.security.event.router.config
+```
 
 ## Clean-up
 

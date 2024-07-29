@@ -4,22 +4,19 @@ kafka-topics \
   --command-config ${COMMAND_CONFIG_FILE} \
   --bootstrap-server ${BOOTSTRAP_SERVER} \
   --create \
-  --topic test \
+  --topic confluent-audit-log-events \
   --partitions 1
 
-kafka-acls \
+kafka-topics \
   --command-config ${COMMAND_CONFIG_FILE} \
   --bootstrap-server ${BOOTSTRAP_SERVER} \
-  --add \
-  --allow-principal User:producer \
-  --operation WRITE \
-  --topic 'test'
+  --create \
+  --topic confluent-audit-log-events-produce \
+  --partitions 1
 
-kafka-acls \
+kafka-topics \
   --command-config ${COMMAND_CONFIG_FILE} \
   --bootstrap-server ${BOOTSTRAP_SERVER} \
-  --add \
-  --allow-principal User:consumer \
-  --operation READ \
-  --topic 'test' \
-  --group 'consumer'
+  --create \
+  --topic confluent-audit-log-events-consume \
+  --partitions 1

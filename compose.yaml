@@ -92,17 +92,62 @@ services:
         org.apache.kafka.common.security.plain.PlainLoginModule required \
         username="broker" \
         password="broker-secret";
-      # confluent audit logs
+      # Confluent ACL-based authorizer
       KAFKA_AUTHORIZER_CLASS_NAME: io.confluent.kafka.security.authorizer.ConfluentServerAuthorizer
-      #KAFKA_CONFLUENT_AUTHORIZER_ACCESS_RULE_PROVIDERS: ZK_ACL # Default
-      #KAFKA_ZOOKEEPER_SET_ACL: "true"
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "false"
+      # confluent audit logs
+      # These lines could be configured dynamically (to be more concise with the subject of this demo), too.
+      # But for simplicity, we configuring them statically here. Please leave uncommented
+      KAFKA_CONFLUENT_SECURITY_EVENT_LOGGER_AUTHENTICATION_ENABLE: 'true'
+      KAFKA_CONFLUENT_SECURITY_EVENT_LOGGER_EXPORTER_KAFKA_SASL_MECHANISM: PLAIN
+      KAFKA_CONFLUENT_SECURITY_EVENT_LOGGER_EXPORTER_KAFKA_SASL_JAAS_CONFIG: |
+        org.apache.kafka.common.security.plain.PlainLoginModule required \
+        username="broker" \
+        password="broker-secret";
+      # The following lines demonstrate how you could configure logging of audit log events from this cluster to the separate audit log cluster statically
+      # However, im this demo we want to enable logging dynamically (see README.adoc), there these lines are commented
+      KAFKA_CONFLUENT_SECURITY_EVENT_ROUTER_CONFIG: |
+        { \
+          "destinations": { \
+              "bootstrap_servers": [ \
+                  "broker-auditlog:9092" \
+              ], \
+              "topics": { \
+                  "confluent-audit-log-events": { \
+                      "retention_ms": 31536000000 \
+                  }, \
+                  "confluent-audit-log-events-produce": { \
+                      "retention_ms": 31536000000 \
+                  }, \
+                  "confluent-audit-log-events-consume": { \
+                      "retention_ms": 31536000000 \
+                  } \
+              } \
+          }, \
+          "default_topics": { \
+              "allowed": "confluent-audit-log-events", \
+              "denied": "confluent-audit-log-events" \
+          }, \
+          "routes": { \
+              "crn:///kafka=*/group=*": { \
+                  "produce": { \
+                      "allowed": "", \
+                      "denied": "confluent-audit-log-events-produce" \
+                  }, \
+                  "consume": { \
+                      "allowed": "confluent-audit-log-events-consume", \
+                      "denied": "confluent-audit-log-events-consume" \
+                  } \
+              } \
+          } \
+        }
       # security zookeeper
       KAFKA_OPTS: -Djava.security.auth.login.config=/etc/kafka/secrets/kafka-client-jaas.config
       KAFKA_CONFLUENT_SECURITY_EVENT_LOGGER_ENABLE: 'true'
       # license configuration
       KAFKA_CONFLUENT_LICENSE_SECURITY_PROTOCOL: SASL_PLAINTEXT
-      KAFKA_CONFLUENT_LICENSE_SASL_JAAS_CONFIG: org.apache.kafka.common.security.plain.PlainLoginModule required \
+      KAFKA_CONFLUENT_LICENSE_SASL_JAAS_CONFIG: |
+        org.apache.kafka.common.security.plain.PlainLoginModule required \
         username="broker" \
         password="broker-secret";
 
@@ -144,7 +189,7 @@ services:
   zookeeper-auditlog:
     image: confluentinc/cp-zookeeper:${CP_VERSION}
     hostname: zookeeper-auditlog
-    profiles: [auditlog]
+    #profiles: [auditlog]
     restart: always
     #ports:
     #  - "12181:2181"
@@ -166,7 +211,7 @@ services:
   broker-auditlog:
     image: confluentinc/cp-server:${CP_VERSION}
     hostname: broker-auditlog
-    profiles: [auditlog]
+    #profiles: [auditlog]
     depends_on:
       - zookeeper-auditlog
     ports:
@@ -175,6 +220,11 @@ services:
       - data-broker-auditlog:/var/lib/kafka/data
       - ${PWD}/jaas/broker.config:/etc/kafka/secrets/kafka-client-jaas.config
       - ./clients:/clients
+    healthcheck:
+      test: kafka-topics --command-config /clients/admin-auditlog.conf --list --bootstrap-server broker-auditlog:9092 || exit 1
+      interval: 1s
+      timeout: 60s
+      retries: 60
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper-auditlog:2181'
@@ -189,51 +239,77 @@ services:
       KAFKA_CONFLUENT_CLUSTER_LINK_ENABLE: "false"
       KAFKA_CONFLUENT_BALANCER_ENABLE: "false"
       # metrics (disabled)
-      #KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
       CONFLUENT_METRICS_ENABLE: "false"
-      #CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: broker:9092
       CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
+ 
       # listeners
-      KAFKA_ADVERTISED_LISTENERS: CLIENTS://broker:9092,HOST://localhost:29092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CLIENTS:SASL_PLAINTEXT,HOST:SASL_PLAINTEXT
-      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+      KAFKA_ADVERTISED_LISTENERS: CLIENTS://broker-auditlog:9092,BROKER://broker-auditlog:9093,HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CLIENTS:SASL_PLAINTEXT,BROKER:SASL_PLAINTEXT,HOST:SASL_PLAINTEXT
       KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
-      KAFKA_SECURITY_INTER_BROKER_PROTOCOL: SASL_PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: CLIENTS
+      KAFKA_INTER_BROKER_LISTENER_NAME: BROKER
+      KAFKA_SUPER_USERS: "User:broker;User:admin"
       # listener "CLIENTS"
       KAFKA_LISTENER_NAME_CLIENTS_SASL_ENABLED_MECHANISMS: PLAIN
-      KAFKA_LISTENER_NAME_CLIENTS_PLAIN_SASL_JAAS_CONFIG: org.apache.kafka.common.security.plain.PlainLoginModule required \
+      KAFKA_LISTENER_NAME_CLIENTS_PLAIN_SASL_JAAS_CONFIG: |
+        org.apache.kafka.common.security.plain.PlainLoginModule required \
         username="broker" \
         password="broker-secret" \
         user_broker="broker-secret" \
         user_producer="producer-secret" \
         user_consumer="consumer-secret" \
         user_admin="admin-secret";
+      # listener "BROKER"
+      KAFKA_LISTENER_NAME_BROKER_SASL_ENABLED_MECHANISMS: PLAIN
+      KAFKA_LISTENER_NAME_BROKER_PLAIN_SASL_JAAS_CONFIG: org.apache.kafka.common.security.plain.PlainLoginModule required \
+        username="broker" \
+        password="broker-secret" \
+        user_broker="broker-secret";
       # listener "HOST"
       KAFKA_LISTENER_NAME_HOST_SASL_ENABLED_MECHANISMS: PLAIN
-      KAFKA_LISTENER_NAME_HOST_PLAIN_SASL_JAAS_CONFIG: org.apache.kafka.common.security.plain.PlainLoginModule required \
+      KAFKA_LISTENER_NAME_HOST_PLAIN_SASL_JAAS_CONFIG: |
+        org.apache.kafka.common.security.plain.PlainLoginModule required \
         username="broker" \
         password="broker-secret" \
         user_broker="broker-secret" \
         user_producer="producer-secret" \
         user_consumer="consumer-secret" \
         user_admin="admin-secret";
-      # license client
-      CONFLUENT_LICENSE_SECURITY_PROTOCOL: SASL_PLAINTEXT
-      CONFLUENT_LICENSE_SASL_JAAS_CONFIG: org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required \
+      # audit logger
+      CONFLUENT_SECURITY_EVENT_LOGGER_EXPORTER_KAFKA_SASL_JAAS_CONFIG: |
+        org.apache.kafka.common.security.plain.PlainLoginModule required \
         username="broker" \
         password="broker-secret";
-      # metrics security
-      #CONFLUENT_METRICS_REPORTER_SASL_MECHANISM: PLAIN
-      #CONFLUENT_METRICS_REPORTER_SECURITY_PROTOCOL: SASL_PLAINTEXT
-      #CONFLUENT_METRICS_REPORTER_SASL_JAAS_CONFIG: org.apache.kafka.common.security.plain.PlainLoginModule required \
-      #  username="controlcenter" \
-      #  password="controlcenter-secret";
       # confluent audit logs
-      #KAFKA_AUTHORIZER_CLASS_NAME: io.confluent.kafka.security.authorizer.ConfluentServerAuthorizer
-      #KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: 'true'
+      KAFKA_AUTHORIZER_CLASS_NAME: io.confluent.kafka.security.authorizer.ConfluentServerAuthorizer
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "false"
       # security zookeeper
       KAFKA_OPTS: -Djava.security.auth.login.config=/etc/kafka/secrets/kafka-client-jaas.config
+      KAFKA_CONFLUENT_SECURITY_EVENT_LOGGER_ENABLE: 'false'
+      # license configuration
+      KAFKA_CONFLUENT_LICENSE_SECURITY_PROTOCOL: SASL_PLAINTEXT
+      KAFKA_CONFLUENT_LICENSE_SASL_JAAS_CONFIG: org.apache.kafka.common.security.plain.PlainLoginModule required \
+        username="broker" \
+        password="broker-secret";
+
+  init_cluster_auditlog:
+    image: confluentinc/cp-server:${CP_VERSION}
+    hostname: init_cluster_auditlog
+    container_name: init_cluster_auditlog
+    depends_on:
+      broker-auditlog:
+        condition: service_healthy
+    deploy: 
+      restart_policy: 
+        condition: none
+    volumes:
+     - ./init/init_cluster_auditlog.sh:/usr/bin/init_cluster_auditlog.sh
+     - ./clients:/clients
+    entrypoint: /bin/bash
+    command:
+      - "/usr/bin/init_cluster_auditlog.sh"
+    environment:
+      BOOTSTRAP_SERVER: broker-auditlog:9092
+      COMMAND_CONFIG_FILE: /clients/admin.conf
 
 volumes:
   data-zookeeper-log:
