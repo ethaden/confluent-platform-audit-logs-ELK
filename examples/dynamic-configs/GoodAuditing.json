@@ -7,6 +7,12 @@ confluent.security.event.router.config={ \
             "confluent-audit-log-events": { \
                 "retention_ms": 31536000000 \
             }, \
+            "confluent-audit-log-events-management": { \
+                "retention_ms": 31536000000 \
+            }, \
+            "confluent-audit-log-events-describe": { \
+                "retention_ms": 31536000000 \
+            }, \
             "confluent-audit-log-events-produce": { \
                 "retention_ms": 31536000000 \
             }, \
@@ -15,14 +21,23 @@ confluent.security.event.router.config={ \
             } \
         } \
     }, \
+    "excluded_principals": ["User:broker", "User:admin"], \
     "default_topics": { \
         "allowed": "confluent-audit-log-events", \
         "denied": "confluent-audit-log-events" \
     }, \
     "routes": { \
-        "crn:///kafka=*/group=*": { \
+        "crn:///kafka=*/topic=*": { \
+            "management": { \
+                "allowed": "confluent-audit-log-events-management", \
+                "denied": "confluent-audit-log-events-management" \
+            }, \
+            "describe": { \
+                "allowed": "confluent-audit-log-events-describe", \
+                "denied": "confluent-audit-log-events-describe" \
+            }, \
             "produce": { \
-                "allowed": "", \
+                "allowed": "confluent-audit-log-events-produce", \
                 "denied": "confluent-audit-log-events-produce" \
             }, \
             "consume": { \

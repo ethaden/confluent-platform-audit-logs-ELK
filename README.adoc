@@ -42,36 +42,64 @@ You can list the topics of the audit log cluster like this:
 docker compose exec broker kafka-topics --command-config /clients/admin-auditlog.conf --bootstrap-server broker-auditlog:9092 --list
 ```
 
+The following topics are configured in the audit log cluster:
 
-In a separate shell, start consuming from the default one:
+* confluent-audit-log-events: Default topic capturing all events
+* confluent-audit-log-events-management: Capture all management events
+* confluent-audit-log-events-describe: Capture all describe events
+* confluent-audit-log-events-produce: Capture all produce events
+* confluent-audit-log-events-consume: Capture all consume events
+
+However, in the default configuration set up by the demo, only denied requests are shown in the logs.
+
+In a separate shell, start consuming from the topic gathering audit log events for produce requests one:
 
 ```shell
-docker compose exec broker-auditlog kafka-console-consumer --consumer.config /clients/admin-auditlog.conf --bootstrap-server broker-auditlog:9092 --topic confluent-audit-log-events
+docker compose exec broker-auditlog kafka-console-consumer --consumer.config /clients/admin-auditlog.conf --bootstrap-server broker-auditlog:9092 --topic confluent-audit-log-events-produce
 ```
 
-Produce something to the `test` topic and the main cluster, but use the wrong credentials. Authorization will be denied:
+Produce something to the `test` topic and the main cluster, but use the wrong credentials (they can only be used to read events).
+Authorization will be denied:
 
 ```shell
 docker compose exec broker kafka-console-producer --producer.config /clients/consumer.conf --bootstrap-server broker:9092 --topic test
 ```
 
-However, you won't see anything in the topic in our audit log cluster yet, as the configuration to forward audit log events will be dynamically added in the next step.
-
 ## Dynamic configuration
 
-Show the dynamic configuration of the main cluster:
+Now we want to use dynamic configuration to temporarily increase the level of detail of what is logged to the audit log cluster.
+
+First, let's show the dynamic configuration of the main cluster:
 
 ```shell
 docker compose exec broker kafka-configs --command-config /clients/admin.conf --bootstrap-server broker:9092 --describe --entity-type brokers
 ```
 
-We have provided authentication information required for the main cluster to forward events to the audit log cluster in the broker configuration. But we have not configured the actual forwarding of events yet. This is done in the following.
+Currently, we do not track successful requests. You can try that by producing data successfully and looking at the `confluent-audit-log-events-produce` topic (see above):
+
+```shell
+docker compose exec broker kafka-console-producer --producer.config /clients/producer.conf --bootstrap-server broker:9092 --topic test
+```
+
+You won't see any events in the audit log topic. Let's change that and track successful produce requests, too.
 
 Apply the dynamic configuration found in file `/examples/dynamic-configs/GoodAuditing.json`:
 
 ```shell
 docker compose exec broker kafka-configs --command-config /clients/admin.conf --bootstrap-server broker:9092 --alter --broker-defaults --add-config-file /examples/dynamic-configs/GoodAuditing.json
 ```
+
+Note, that this will erase the configured authentication settings for. We need to set them again, on broker level, i.e. for every broker individually.
+We have only one broker in our cluster, so one command is enough, for the broker with ID=1:
+
+```shell
+docker compose exec broker kafka-configs --command-config /clients/admin.conf --bootstrap-server broker:9092 --entity-type brokers --entity-name 1 --alter --add-config \
+confluent.security.event.logger.exporter.kafka.sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required \
+  username="auditlogproducer" \
+  password="auditlogproducer-secret";
+```
+
+Important note: This only works if `password.encoder.secret` has been configured for the broker.
 
 Optionally, show the applied dynamic broker configuration:
 

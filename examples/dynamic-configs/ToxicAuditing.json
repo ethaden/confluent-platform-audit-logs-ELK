@@ -7,6 +7,12 @@
             "confluent-audit-log-events": {
                 "retention_ms": 31536000000
             },
+            "confluent-audit-log-events-management": {
+                "retention_ms": 31536000000
+            },
+            "confluent-audit-log-events-describe": {
+                "retention_ms": 31536000000
+            },
             "confluent-audit-log-events-produce": {
                 "retention_ms": 31536000000
             },
@@ -21,8 +27,16 @@
     },
     "routes": {
         "crn:///kafka=*/group=*": {
+            "management": {
+                "allowed": "confluent-audit-log-events-management",
+                "denied": "confluent-audit-log-events-management"
+            },
+            "describe": {
+                "allowed": "confluent-audit-log-events-describe",
+                "denied": "confluent-audit-log-events-describe"
+            },
             "produce": {
-                "allowed": "",
+                "allowed": "confluent-audit-log-events-produce",
                 "denied": "confluent-audit-log-events-produce"
             },
             "consume": {
