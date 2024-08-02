@@ -11,6 +11,19 @@ Start the docker containers
 docker compose up -d
 ```
 
+Optionally, you can enable a docker profile with brings an ELK stack, either by setting an environment variable:
+
+```shell
+export COMPOSE_PROFILES=elastic
+docker compose up -d
+```
+
+Or by specifying the profile directly:
+
+```shell
+docker compose --profile elastic up -d
+```
+
 This will set up two clusters, each with one Zookeeper node and one Kafka broker. The main instance is used for regular data. The second instance is used to route audit log data from the first instance too.
 
 The content of the folder `examples` is visible in the `broker` container under `/examples`:
@@ -144,6 +157,6 @@ docker compose exec broker kafka-configs --command-config /clients/admin.conf --
 Shut down all containers and remove all persistant data:
 
 ```shell
-docker compose down -v
+COMPOSE_PROFILES=elastic docker compose down -v
 ```
 

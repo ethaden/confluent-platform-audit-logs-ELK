@@ -1,0 +1,62 @@
+server.host: "0.0.0.0"
+telemetry.enabled: "true"
+xpack.fleet.agents.elasticsearch.hosts: ["http://es01:9200"]
+elasticsearch.ssl.verificationMode: none
+xpack.fleet.packages:
+  - name: fleet_server
+    version: latest
+  - name: system
+    version: latest
+  - name: elastic_agent
+    version: latest
+  - name: docker
+    version: latest
+  - name: kafka_log
+    version: latest
+xpack.fleet.agentPolicies:
+  - name: Fleet-Server-Policy
+    id: fleet-server-policy
+    namespace: default
+    monitoring_enabled: 
+      - logs
+      - metrics
+    package_policies:
+      - name: fleet_server-1
+        package:
+          name: fleet_server
+      - name: system-1
+        package:
+          name: system
+      - name: elastic_agent-1
+        package:
+          name: elastic_agent
+      - name: confluent_cloud_audit_log
+        package:
+          name: kafka_log
+        inputs:
+          - type: kafka
+            enabled: true
+            streams:
+              - data_stream:
+                  dataset: kafka_log.generic
+                vars:
+                  - name: hosts
+                    value: ['${env.KAFKA_BOOTSTRAP_SERVER}']
+                  - name: topics
+                    value: ['${env.KAFKA_TOPIC}']
+                  - name: group_id
+                    value: '${env.KAFKA_GROUP_ID}'
+                  - name: client_id
+                    value: '${env.KAFKA_CLIENT_ID}'
+                  - name: username
+                    value: '${env.KAFKA_USER}'
+                  - name: password
+                    value: '${env.KAFKA_PASSWORD}'
+                  - name: parsers
+                    value: |
+                      - ndjson:
+                        target: ""
+                        add_error_key: true
+                        message_key: message
+                  - name: ssl
+                    value: "enabled: true"
