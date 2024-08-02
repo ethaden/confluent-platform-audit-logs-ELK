@@ -152,6 +152,20 @@ Remove the dynamic configuration again:
 docker compose exec broker kafka-configs --command-config /clients/admin.conf --bootstrap-server broker:9092 --alter --broker-defaults --delete-config confluent.security.event.router.config
 ```
 
+== Usage of Elastic, Kibana and Elastic agent
+
+Access `kibana` with your web browser here (you need to create an exception as the certificate is self-signed):
+
+* URL: `http://localhost:5601`
+* Username: `elastic`
+* Password: `elastic`
+
+On the left side, click on `Observability`, then open `Stream`. After a while, you should start to see Kafka Audit Log events (`event.dataset: kafka_log.generic`).
+
+Go back to the main page and open `Analytics->Discover`. You should be able to see all the unpacked json events.
+Use a filter such as `event.dataset : "kafka_log.generic"` to show only the audit log data.
+
+
 ## Clean-up
 
 Shut down all containers and remove all persistant data:

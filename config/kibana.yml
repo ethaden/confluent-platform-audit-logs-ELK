@@ -59,4 +59,4 @@ xpack.fleet.agentPolicies:
                         add_error_key: true
                         message_key: message
                   - name: ssl
-                    value: "enabled: true"
+                    value: "enabled: false"

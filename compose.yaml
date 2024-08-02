@@ -134,6 +134,9 @@ services:
                   }, \
                   "confluent-audit-log-events-consume": { \
                       "retention_ms": 31536000000 \
+                  }, \
+                  "confluent-audit-log-events-combined": { \
+                      "retention_ms": 31536000000 \
                   } \
               } \
           }, \
@@ -159,6 +162,24 @@ services:
                   "consume": { \
                       "allowed": "", \
                       "denied": "confluent-audit-log-events-consume" \
+                  } \
+              }, \
+              "crn:///kafka=*/topic=*": { \
+                  "management": { \
+                      "allowed": "confluent-audit-log-events-combined", \
+                      "denied": "confluent-audit-log-events-combined" \
+                  }, \
+                  "describe": { \
+                      "allowed": "confluent-audit-log-events-combined", \
+                      "denied": "confluent-audit-log-events-combined" \
+                  }, \
+                  "produce": { \
+                      "allowed": "confluent-audit-log-events-combined", \
+                      "denied": "confluent-audit-log-events-combined" \
+                  }, \
+                  "consume": { \
+                      "allowed": "confluent-audit-log-events-combined", \
+                      "denied": "confluent-audit-log-events-combined" \
                   } \
               } \
           } \
