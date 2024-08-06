@@ -4,7 +4,7 @@ This playground for experimenting with audit logging with a dedicated audit log 
 
 DISCLAIMER: This project is for demonstration purposes only. Using the demo unmodified in production is highly discouraged. Use at your own risk.
 
-## How to use
+== How to use
 Start the docker containers
 
 ```shell
@@ -45,7 +45,7 @@ A few ACLs should have been set up. You can list them like this::
 docker compose exec broker kafka-acls --command-config /clients/admin.conf --bootstrap-server broker:9092 --list
 ```
 
-## Audit log
+=== Audit log
 
 The setup has created a separate audit log "cluster" and prepared three topics in it.
 
@@ -58,17 +58,17 @@ docker compose exec broker kafka-topics --command-config /clients/admin-auditlog
 The following topics are configured in the audit log cluster:
 
 * confluent-audit-log-events: Default topic capturing all events
-* confluent-audit-log-events-management: Capture all management events
-* confluent-audit-log-events-describe: Capture all describe events
-* confluent-audit-log-events-produce: Capture all produce events
-* confluent-audit-log-events-consume: Capture all consume events
+* confluent-audit-log-events-management: Capture all management events. Not used by our default setup in this demo.
+* confluent-audit-log-events-describe: Capture all describe events. Not used by our default setup in this demo.
+* confluent-audit-log-events-produce: Capture all produce events. Not used by our default setup in this demo.
+* confluent-audit-log-events-consume: Capture all consume events. Not used by our default setup in this demo.
 
 However, in the default configuration set up by the demo, only denied requests are shown in the logs.
 
 In a separate shell, start consuming from the topic gathering audit log events for produce requests one:
 
 ```shell
-docker compose exec broker-auditlog kafka-console-consumer --consumer.config /clients/admin-auditlog.conf --bootstrap-server broker-auditlog:9092 --topic confluent-audit-log-events-produce
+docker compose exec broker-auditlog kafka-console-consumer --consumer.config /clients/admin-auditlog.conf --bootstrap-server broker-auditlog:9092 --topic confluent-audit-log-events
 ```
 
 Produce something to the `test` topic and the main cluster, but use the wrong credentials (they can only be used to read events).
@@ -78,7 +78,9 @@ Authorization will be denied:
 docker compose exec broker kafka-console-producer --producer.config /clients/consumer.conf --bootstrap-server broker:9092 --topic test
 ```
 
-## Dynamic configuration
+=== Dynamic configuration using `kafka-configs`
+
+First and most important note: If you use Confluent Platform, please set up `mds` and use either the `confluent` cli tool or the REST API to create or update the dynamic configurations. Please do not use `kafka-configs` as this tool allows you to screw up your whole setup easily due to missing consistency checks.
 
 Now we want to use dynamic configuration to temporarily increase the level of detail of what is logged to the audit log cluster.
 
@@ -152,6 +154,8 @@ Remove the dynamic configuration again:
 docker compose exec broker kafka-configs --command-config /clients/admin.conf --bootstrap-server broker:9092 --alter --broker-defaults --delete-config confluent.security.event.router.config
 ```
 
+=== Dynamic configuration using `kafka-configs`
+
 == Usage of Elastic, Kibana and Elastic agent
 
 Access `kibana` with your web browser here (you need to create an exception as the certificate is self-signed):
@@ -166,7 +170,7 @@ Go back to the main page and open `Analytics->Discover`. You should be able to s
 Use a filter such as `event.dataset : "kafka_log.generic"` to show only the audit log data.
 
 
-## Clean-up
+== Clean-up
 
 Shut down all containers and remove all persistant data:
 
