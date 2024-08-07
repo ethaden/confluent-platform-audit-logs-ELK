@@ -127,25 +127,25 @@ services:
           }, \
           "excluded_principals": ["User:broker", "User:admin"], \
           "default_topics": { \
-              "allowed": "confluent-audit-log-events", \
+              "allowed": "", \
               "denied": "confluent-audit-log-events" \
           }, \
           "routes": { \
               "crn:///kafka=*/topic=*": { \
                   "management": { \
-                      "allowed": "confluent-audit-log-events", \
+                      "allowed": "", \
                       "denied": "confluent-audit-log-events" \
                   }, \
                   "describe": { \
-                      "allowed": "confluent-audit-log-events", \
+                      "allowed": "", \
                       "denied": "confluent-audit-log-events" \
                   }, \
                   "produce": { \
-                      "allowed": "confluent-audit-log-events", \
+                      "allowed": "", \
                       "denied": "confluent-audit-log-events" \
                   }, \
                   "consume": { \
-                      "allowed": "confluent-audit-log-events", \
+                      "allowed": "", \
                       "denied": "confluent-audit-log-events" \
                   } \
               } \
