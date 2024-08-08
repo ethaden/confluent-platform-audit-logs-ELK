@@ -47,7 +47,7 @@ docker compose exec broker kafka-acls --command-config /clients/admin.conf --boo
 
 === Audit log
 
-The setup has created a separate audit log "cluster" and prepared three topics in it.
+The setup has created a separate audit log "cluster" and prepared a few topics in it.
 
 You can list the topics of the audit log cluster like this:
 
@@ -71,12 +71,19 @@ In a separate shell, start consuming from the topic gathering audit log events f
 docker compose exec broker-auditlog kafka-console-consumer --consumer.config /clients/admin-auditlog.conf --bootstrap-server broker-auditlog:9092 --topic confluent-audit-log-events
 ```
 
-Produce something to the `test` topic and the main cluster, but use the wrong credentials (they can only be used to read events).
-Authorization will be denied:
+Produce something to the `test` topic in the main cluster, as authorization will be granted, nothing should show up in the log files:
+
+```shell
+docker compose exec broker kafka-console-producer --producer.config /clients/producer.conf --bootstrap-server broker:9092 --topic test
+```
+
+Now produce something but use the wrong credentials (the one created for the `consumer` are only allowed to read events). Authorization will be denied:
 
 ```shell
 docker compose exec broker kafka-console-producer --producer.config /clients/consumer.conf --bootstrap-server broker:9092 --topic test
 ```
+
+You will see many events in the audit log topic. If you use credentials allowed to produce to the topic, you won't see any audit log events as by default we only log rejected requests in this demo.
 
 === Dynamic configuration using `kafka-configs`
 
@@ -90,31 +97,12 @@ First, let's show the dynamic configuration of the main cluster:
 docker compose exec broker kafka-configs --command-config /clients/admin.conf --bootstrap-server broker:9092 --describe --entity-type brokers
 ```
 
-Currently, we do not track successful requests. You can try that by producing data successfully and looking at the `confluent-audit-log-events-produce` topic (see above):
-
-```shell
-docker compose exec broker kafka-console-producer --producer.config /clients/producer.conf --bootstrap-server broker:9092 --topic test
-```
-
-You won't see any events in the audit log topic. Let's change that and track successful produce requests, too.
-
+Currently, we do not track successful requests. Let's change that, which might be useful for e.g. debugging.
 Apply the dynamic configuration found in file `/examples/dynamic-configs/GoodAuditing.json`:
 
 ```shell
 docker compose exec broker kafka-configs --command-config /clients/admin.conf --bootstrap-server broker:9092 --alter --broker-defaults --add-config-file /examples/dynamic-configs/GoodAuditing.json
 ```
-
-Note, that this will erase the configured authentication settings for. We need to set them again, on broker level, i.e. for every broker individually.
-We have only one broker in our cluster, so one command is enough, for the broker with ID=1:
-
-```shell
-docker compose exec broker kafka-configs --command-config /clients/admin.conf --bootstrap-server broker:9092 --entity-type brokers --entity-name 1 --alter --add-config \
-confluent.security.event.logger.exporter.kafka.sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required \
-  username="auditlogproducer" \
-  password="auditlogproducer-secret";
-```
-
-Important note: This only works if `password.encoder.secret` has been configured for the broker.
 
 Optionally, show the applied dynamic broker configuration:
 
@@ -141,24 +129,23 @@ Try producing with wrong credentials:
 docker compose exec broker kafka-console-producer --producer.config /clients/consumer.conf --bootstrap-server broker:9092 --topic test
 ```
 
+In both cases you should now see events in the audit log topic.
 
-Consume from the cluster:
+Optionally, you can consume the successfully produced events from the cluster like this:
 
 ```shell
 docker compose exec broker kafka-console-consumer --consumer.config /clients/consumer.conf --bootstrap-server broker:9092 --topic test --from-beginning
 ```
 
-Remove the dynamic configuration again:
+Now, let's remove the dynamic configuration again:
 
 ```shell
 docker compose exec broker kafka-configs --command-config /clients/admin.conf --bootstrap-server broker:9092 --alter --broker-defaults --delete-config confluent.security.event.router.config
 ```
 
-=== Dynamic configuration using `kafka-configs`
+== Optionally: Usage of Elastic, Kibana and Elastic agent
 
-== Usage of Elastic, Kibana and Elastic agent
-
-Access `kibana` with your web browser here (you need to create an exception as the certificate is self-signed):
+If you have enabled the `elastic` Docker profile, you can access `kibana` with your web browser here (you need to create an exception as the certificate is self-signed):
 
 * URL: `http://localhost:5601`
 * Username: `elastic`
@@ -168,6 +155,8 @@ On the left side, click on `Observability`, then open `Stream`. After a while, y
 
 Go back to the main page and open `Analytics->Discover`. You should be able to see all the unpacked json events.
 Use a filter such as `event.dataset : "kafka_log.generic"` to show only the audit log data.
+
+Many more options are available. Note that the content of the `message` field of the Kafka event is extracted by the configuration automatically thus making all contained fields availablel too.
 
 
 == Clean-up

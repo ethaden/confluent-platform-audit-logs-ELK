@@ -32,8 +32,8 @@ services:
     volumes:
       - data-broker:/var/lib/kafka/data
       - ${PWD}/jaas/broker.config:/etc/kafka/secrets/kafka-client-jaas.config
-      - ./examples:/examples
-      - ./clients:/clients
+      - ${PWD}/examples:/examples
+      - ${PWD}/clients:/clients
     healthcheck:
       test: kafka-topics --command-config /clients/admin.conf --list --bootstrap-server broker:9092 || exit 1
       interval: 1s
@@ -42,7 +42,8 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       # Only for debugging:
-      KAFKA_LOG4J_LOGGERS: DEBUG
+      #KAFKA_LOG4J_LOGGERS: DEBUG
+      #KAFKA_LOG4J_ROOT_LOGLEVEL: DEBUG
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
@@ -107,10 +108,12 @@ services:
       KAFKA_CONFLUENT_SECURITY_EVENT_LOGGER_AUTHENTICATION_ENABLE: 'true'
       # Configuration for the audit log exporter which will write audit log events to a separate cluster
       KAFKA_CONFLUENT_SECURITY_EVENT_LOGGER_EXPORTER_KAFKA_SASL_MECHANISM: PLAIN
+      # Make sure set configure the security protocol, otherwise you will run into a bug as soon as you reconfigure the router configuration dynamically!
+      KAFKA_CONFLUENT_SECURITY_EVENT_LOGGER_EXPORTER_KAFKA_SECURITY_PROTOCOL: SASL_PLAINTEXT
       KAFKA_CONFLUENT_SECURITY_EVENT_LOGGER_EXPORTER_KAFKA_SASL_JAAS_CONFIG: |-
-        org.apache.kafka.common.security.plain.PlainLoginModule required \
-        username="auditlogproducer" \
-        password="auditlogproducer-secret";
+       org.apache.kafka.common.security.plain.PlainLoginModule required \
+       username="auditlogproducer" \
+       password="auditlogproducer-secret";
       # The following lines demonstrate how you could configure logging of audit log events from this cluster to the separate audit log cluster statically
       # However, im this demo we want to enable logging dynamically (see README.adoc), there these lines are commented
       KAFKA_CONFLUENT_SECURITY_EVENT_ROUTER_CONFIG: |-
@@ -225,8 +228,8 @@ services:
       restart_policy: 
         condition: none
     volumes:
-     - ./init/init_cluster.sh:/usr/bin/init_cluster.sh
-     - ./clients:/clients
+     - ${PWD}/init/init_cluster.sh:/usr/bin/init_cluster.sh
+     - ${PWD}/clients:/clients
     entrypoint: /bin/bash
     command:
       - "/usr/bin/init_cluster.sh"
@@ -234,32 +237,14 @@ services:
       BOOTSTRAP_SERVER: broker:9092
       COMMAND_CONFIG_FILE: /clients/admin.conf
 
-  # schema-registry:
-  #   image: confluentinc/cp-schema-registry:${CP_VERSION}
-  #   hostname: schema-registry
-  #   #container_name: schema-registry
-  #   depends_on:
-  #     - zookeeper
-  #     - broker
-  #   ports:
-  #     - '8081:8081'
-  #   environment:
-  #     SCHEMA_REGISTRY_HOST_NAME: schema-registry
-  #     SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'broker:9092'
-  #     SCHEMA_REGISTRY_LISTENERS: "http://0.0.0.0:8081"
-  #     SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: 'zookeeper:2181'
-
   zookeeper-auditlog:
     image: confluentinc/cp-zookeeper:${CP_VERSION}
     hostname: zookeeper-auditlog
-    #profiles: [auditlog]
     restart: always
-    #ports:
-    #  - "12181:2181"
     volumes:
       - data-zookeeper-auditlog-log:/var/lib/zookeeper/log
       - data-zookeeper-auditlog-data:/var/lib/zookeeper/data
-      - ${PWD}/jaas/zookeeper.config:/etc/zookeeper/secrets/zookeeper-server-jaas.config
+      - ${PWD}/jaas/zookeeper-auditlog.config:/etc/zookeeper/secrets/zookeeper-server-jaas.config
     environment:
       ZOOKEEPER_TICK_TIME: 2000
       ZOOKEEPER_SERVER_ID: 1
@@ -274,15 +259,14 @@ services:
   broker-auditlog:
     image: confluentinc/cp-server:${CP_VERSION}
     hostname: broker-auditlog
-    #profiles: [auditlog]
     depends_on:
       - zookeeper-auditlog
     ports:
       - "29092:29092"
     volumes:
       - data-broker-auditlog:/var/lib/kafka/data
-      - ${PWD}/jaas/broker.config:/etc/kafka/secrets/kafka-client-jaas.config
-      - ./clients:/clients
+      - ${PWD}/jaas/broker-auditlog.config:/etc/kafka/secrets/kafka-client-jaas.config
+      - ${PWD}/clients:/clients
     healthcheck:
       test: kafka-topics --command-config /clients/admin-auditlog.conf --list --bootstrap-server broker-auditlog:9092 || exit 1
       interval: 1s
@@ -316,8 +300,8 @@ services:
       KAFKA_LISTENER_NAME_CLIENTS_PLAIN_SASL_JAAS_CONFIG: |-
         org.apache.kafka.common.security.plain.PlainLoginModule required \
         username="broker" \
-        password="broker-secret" \
-        user_broker="broker-secret" \
+        password="broker-secret2" \
+        user_broker="broker-secret2" \
         user_auditlogproducer="auditlogproducer-secret" \
         user_auditlogconsumer="auditlogconsumer-secret" \
         user_admin="admin-secret";
@@ -326,15 +310,15 @@ services:
       KAFKA_LISTENER_NAME_BROKER_PLAIN_SASL_JAAS_CONFIG: |-
         org.apache.kafka.common.security.plain.PlainLoginModule required \
         username="broker" \
-        password="broker-secret" \
-        user_broker="broker-secret";
+        password="broker-secret2" \
+        user_broker="broker-secret2";
       # listener "HOST"
       KAFKA_LISTENER_NAME_HOST_SASL_ENABLED_MECHANISMS: PLAIN
       KAFKA_LISTENER_NAME_HOST_PLAIN_SASL_JAAS_CONFIG: |-
         org.apache.kafka.common.security.plain.PlainLoginModule required \
         username="broker" \
-        password="broker-secret" \
-        user_broker="broker-secret" \
+        password="broker-secret2" \
+        user_broker="broker-secret2" \
         user_auditlogproducer="auditlogproducer-secret" \
         user_auditlogconsumer="auditlogconsumer-secret" \
         user_admin="admin-secret";
@@ -350,7 +334,7 @@ services:
       KAFKA_CONFLUENT_LICENSE_SASL_JAAS_CONFIG: |-
         org.apache.kafka.common.security.plain.PlainLoginModule required \
         username="broker" \
-        password="broker-secret";
+        password="broker-secret2";
 
   init_cluster_auditlog:
     image: confluentinc/cp-server:${CP_VERSION}
@@ -396,6 +380,8 @@ services:
   es01:
     image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
     hostname: es01
+    profiles: 
+      - elastic
     labels:
       co.elastic.logs/module: elasticsearch
     volumes:
@@ -433,11 +419,13 @@ services:
         condition: service_healthy
     image: docker.elastic.co/kibana/kibana:${STACK_VERSION}
     hostname: kibana
+    profiles: 
+      - elastic
     labels:
       co.elastic.logs/module: kibana
     volumes:
       - kibanadata:/usr/share/kibana/data
-      - ./config/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+      - ${PWD}/config/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
     ports:
       - ${KIBANA_PORT}:5601
     environment:

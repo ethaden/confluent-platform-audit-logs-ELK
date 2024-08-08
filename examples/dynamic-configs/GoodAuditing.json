@@ -6,18 +6,6 @@ confluent.security.event.router.config={ \
         "topics": { \
             "confluent-audit-log-events": { \
                 "retention_ms": 31536000000 \
-            }, \
-            "confluent-audit-log-events-management": { \
-                "retention_ms": 31536000000 \
-            }, \
-            "confluent-audit-log-events-describe": { \
-                "retention_ms": 31536000000 \
-            }, \
-            "confluent-audit-log-events-produce": { \
-                "retention_ms": 31536000000 \
-            }, \
-            "confluent-audit-log-events-consume": { \
-                "retention_ms": 31536000000 \
             } \
         } \
     }, \
@@ -29,20 +17,20 @@ confluent.security.event.router.config={ \
     "routes": { \
         "crn:///kafka=*/topic=*": { \
             "management": { \
-                "allowed": "confluent-audit-log-events-management", \
-                "denied": "confluent-audit-log-events-management" \
+                "allowed": "confluent-audit-log-events", \
+                "denied": "confluent-audit-log-events" \
             }, \
             "describe": { \
-                "allowed": "confluent-audit-log-events-describe", \
-                "denied": "confluent-audit-log-events-describe" \
+                "allowed": "confluent-audit-log-events", \
+                "denied": "confluent-audit-log-events" \
             }, \
             "produce": { \
-                "allowed": "confluent-audit-log-events-produce", \
-                "denied": "confluent-audit-log-events-produce" \
+                "allowed": "confluent-audit-log-events", \
+                "denied": "confluent-audit-log-events" \
             }, \
             "consume": { \
-                "allowed": "confluent-audit-log-events-consume", \
-                "denied": "confluent-audit-log-events-consume" \
+                "allowed": "confluent-audit-log-events", \
+                "denied": "confluent-audit-log-events" \
             } \
         } \
     } \
